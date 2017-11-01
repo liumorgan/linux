@@ -15,6 +15,13 @@
 
 #define DELL_WMI_DESCRIPTOR_GUID "8D9DDCBC-A997-11DA-B012-B622A1EF5492"
 
+/* possible return values:
+ *  -EPROBE_DEFER: probing for dell-wmi-descriptor not yet run
+ *  0: valid descriptor, successfully probed
+ *  < 0: invalid descriptor, don't probe dependent devices
+ */
+int dell_wmi_get_descriptor_valid(void);
+
 bool dell_wmi_get_interface_version(u32 *version);
 bool dell_wmi_get_size(u32 *size);
 

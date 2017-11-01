@@ -26,8 +26,15 @@ struct descriptor_priv {
 	u32 interface_version;
 	u32 size;
 };
+static int descriptor_valid = -EPROBE_DEFER;
 static LIST_HEAD(wmi_list);
 static DEFINE_MUTEX(list_mutex);
+
+int dell_wmi_get_descriptor_valid(void)
+{
+	return descriptor_valid;
+}
+EXPORT_SYMBOL_GPL(dell_wmi_get_descriptor_valid);
 
 bool dell_wmi_get_interface_version(u32 *version)
 {
@@ -91,6 +98,7 @@ static int dell_wmi_descriptor_probe(struct wmi_device *wdev)
 	if (obj->type != ACPI_TYPE_BUFFER) {
 		dev_err(&wdev->dev, "Dell descriptor has wrong type\n");
 		ret = -EINVAL;
+		descriptor_valid = ret;
 		goto out;
 	}
 
@@ -102,6 +110,7 @@ static int dell_wmi_descriptor_probe(struct wmi_device *wdev)
 			"Dell descriptor buffer has unexpected length (%d)\n",
 			obj->buffer.length);
 		ret = -EINVAL;
+		descriptor_valid = ret;
 		goto out;
 	}
 
@@ -111,8 +120,10 @@ static int dell_wmi_descriptor_probe(struct wmi_device *wdev)
 		dev_err(&wdev->dev, "Dell descriptor buffer has invalid signature (%8ph)\n",
 			buffer);
 		ret = -EINVAL;
+		descriptor_valid = ret;
 		goto out;
 	}
+	descriptor_valid = 0;
 
 	if (buffer[2] != 0 && buffer[2] != 1)
 		dev_warn(&wdev->dev, "Dell descriptor buffer has unknown version (%lu)\n",
