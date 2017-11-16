@@ -147,9 +147,12 @@ fail_smbios_cmd:
 
 static int dell_smbios_wmi_probe(struct wmi_device *wdev)
 {
+	struct wmi_driver *wdriver =
+		container_of(wdev->dev.driver, struct wmi_driver, driver);
 	struct wmi_smbios_priv *priv;
 	int count;
 	int ret;
+	u32 hotfix;
 
 	if (!wmi_has_guid(DELL_WMI_DESCRIPTOR_GUID))
 		return -ENODEV;
@@ -167,6 +170,16 @@ static int dell_smbios_wmi_probe(struct wmi_device *wdev)
 	if (!dell_wmi_get_size(&priv->req_buf_size))
 		return -EPROBE_DEFER;
 
+	/* some SMBIOS calls fail unless BIOS contains hotfix */
+	if (!dell_wmi_get_hotfix(&hotfix))
+		return -EPROBE_DEFER;
+	if (!hotfix) {
+		dev_warn(&wdev->dev,
+			"WMI SMBIOS userspace interface not supported (%u)\n",
+			hotfix);
+		wdriver->filter_callback = NULL;
+	}
+
 	/* add in the length object we will use internally with ioctl */
 	priv->req_buf_size += sizeof(u64);
 	ret = set_required_buffer_size(wdev, priv->req_buf_size);
@@ -183,6 +196,7 @@ static int dell_smbios_wmi_probe(struct wmi_device *wdev)
 	ret = dell_smbios_register_device(&wdev->dev, &dell_smbios_wmi_call);
 	if (ret)
 		goto fail_register;
+
 
 	priv->wdev = wdev;
 	dev_set_drvdata(&wdev->dev, priv);
